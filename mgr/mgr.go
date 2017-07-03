@@ -21,12 +21,11 @@ type User struct {
 	Password string `json:"password,omitempty"`
 }
 
-// Mgr is vstfpd users management entity.
+// Mgr is vsftpd users management entity.
 type Mgr struct {
-	mu sync.Mutex
-
+	mu   sync.Mutex
 	db   *sql.DB
-	f    *os.File
+	pwd  *os.File
 	root string
 }
 
@@ -54,13 +53,13 @@ func New(root, pwdfile, databaseURL string) (*Mgr, error) {
 	}
 
 	// lock pwdfile exclusively to prevent running
-	// multiple Mgr instances on the same file
+	// multiple Mgr instances on the same pwd file.
 	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		f.Close()
 		return nil, err
 	}
 
-	return &Mgr{f: f, root: root, db: db}, nil
+	return &Mgr{pwd: f, root: root, db: db}, nil
 }
 
 // List returns list of all users.
@@ -134,11 +133,11 @@ func (m *Mgr) Close() error {
 		fmt.Fprintf(os.Stderr, "mgr error: %v\n", err)
 	}
 
-	if err := syscall.Flock(int(m.f.Fd()), syscall.LOCK_UN); err != nil {
+	if err := syscall.Flock(int(m.pwd.Fd()), syscall.LOCK_UN); err != nil {
 		fmt.Fprintf(os.Stderr, "mgr error: %v\n", err)
 	}
 
-	if err := m.f.Close(); err != nil {
+	if err := m.pwd.Close(); err != nil {
 		fmt.Fprintf(os.Stderr, "mgr error: %v\n", err)
 	}
 
@@ -168,10 +167,10 @@ func (m *Mgr) sync(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := os.Truncate(m.f.Name(), 0); err != nil {
+	if err := os.Truncate(m.pwd.Name(), 0); err != nil {
 		return err
 	}
-	if _, err := m.f.Seek(0, io.SeekStart); err != nil {
+	if _, err := m.pwd.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 
@@ -181,7 +180,7 @@ func (m *Mgr) sync(ctx context.Context) error {
 	})
 
 	for _, u := range users {
-		if _, err := m.f.Write([]byte(u.Username + ":" + u.Password + "\n")); err != nil {
+		if _, err := m.pwd.Write([]byte(u.Username + ":" + u.Password + "\n")); err != nil {
 			return err
 		}
 	}

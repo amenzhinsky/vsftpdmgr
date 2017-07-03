@@ -4,22 +4,17 @@
 
 ## API
 
-Create:
+Create new or update existing user:
 ```
 $ curl localhost:8080/users -d '{"username": "test", "password": "test"}'
 ```
 
-Update:
-```
-$ curl localhost:8080/users -d '{"username": "test", "password": "testtest"}'
-```
-
-Delete:
+Delete user:
 ```
 $ curl -X DELETE localhost:8080/users -d '{"username": "test"}'
 ```
 
-List:
+List all users:
 ```
 $ curl localhost:8080/users
 ```
