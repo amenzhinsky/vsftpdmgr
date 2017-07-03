@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -120,6 +119,10 @@ func (m *Mgr) Delete(ctx context.Context, user *User) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if err := os.RemoveAll(filepath.Join(m.root, user.Username)); err != nil {
+		return err
+	}
+
 	_, err := m.db.ExecContext(ctx, `DELETE FROM users WHERE username = $1`, user.Username)
 	if err != nil {
 		return err
@@ -204,31 +207,7 @@ func (m *Mgr) sync(ctx context.Context) error {
 			return err
 		}
 	}
-
-	// remove user local roots if they're not in the list.
-	ff, err := ioutil.ReadDir(m.root)
-	if err != nil {
-		return err
-	}
-
-	for _, fi := range ff {
-		if !containsUser(users, fi.Name()) {
-			if err = os.RemoveAll(filepath.Join(m.root, fi.Name())); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
-}
-
-// containsUser reports when users slice contains user with the named username.
-func containsUser(users []*User, username string) bool {
-	for _, u := range users {
-		if u.Username == username {
-			return true
-		}
-	}
-	return false
 }
 
 // Clean delete all records from the users table.
