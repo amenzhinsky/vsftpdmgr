@@ -173,6 +173,9 @@ func (m *Mgr) list(ctx context.Context) (users []*User, err error) {
 	return users, rows.Err()
 }
 
+// header is written to pwdfile every sync.
+var header = []byte("# This file is managed by vsftpdmgr, all changes will be overwritten\n\n")
+
 // sync saves users list from database to the pwdfile.
 func (m *Mgr) sync(ctx context.Context) error {
 	users, err := m.list(ctx)
@@ -190,6 +193,11 @@ func (m *Mgr) sync(ctx context.Context) error {
 	sort.Slice(users, func(i, j int) bool {
 		return users[i].Username < users[j].Username
 	})
+
+	// write header
+	if _, err = m.pwd.Write(header); err != nil {
+		return err
+	}
 
 	for _, u := range users {
 		if _, err := m.pwd.Write([]byte(u.Username + ":" + u.Password + "\n")); err != nil {
