@@ -210,6 +210,7 @@ func (m *Mgr) sync(ctx context.Context) error {
 	return nil
 }
 
+// containsUser reports when users slice contains user with the named username.
 func containsUser(users []*User, username string) bool {
 	for _, u := range users {
 		if u.Username == username {
@@ -219,6 +220,7 @@ func containsUser(users []*User, username string) bool {
 	return false
 }
 
+// Clean delete all records from the users table.
 func (m *Mgr) Clean() error {
 	_, err := m.db.Exec(`DELETE FROM users`)
 	return err

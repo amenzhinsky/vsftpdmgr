@@ -67,6 +67,8 @@ func start(root, pwdfile string) error {
 		return err
 	}
 
+	// sync mode in the background,
+	// stopped when http server exits.
 	if syncFlag {
 		stopCh := make(chan struct{})
 		defer close(stopCh)
@@ -97,8 +99,8 @@ func start(root, pwdfile string) error {
 // handler is needed for integrated testing.
 func handler(m *mgr.Mgr) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/users", makeUsersHandler(m))
+	mux.HandleFunc("/health", httputil.Log(healthHandler))
+	mux.HandleFunc("/users", httputil.Log(makeUsersHandler(m)))
 	return mux
 }
 
@@ -109,8 +111,8 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // GET    /users
-// POST   /users {"name": "", "password": "", "structure": [{""}]}
-// DELETE /users {"name": ""}
+// POST   /users {"username": "", "password": ""}
+// DELETE /users {"username": ""}
 func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
