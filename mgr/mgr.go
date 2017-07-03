@@ -81,14 +81,17 @@ func (m *Mgr) List(ctx context.Context) ([]*User, error) {
 	return users, nil
 }
 
+// ErrInvalidUser is returned when user cannot be saved.
+var ErrInvalidUser = errors.New("user is not valid")
+
 // Save saves user to the database or update it's password if
 // it already exists.
 func (m *Mgr) Save(ctx context.Context, user *User) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if user.Username == "" || user.Password == "" {
-		return errors.New("username or password is blank")
+	if len(user.Username) < 4 || len(user.Password) < 4 {
+		return ErrInvalidUser
 	}
 
 	// encrypt password

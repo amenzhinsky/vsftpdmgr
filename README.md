@@ -6,17 +6,17 @@
 
 Create new or update existing user:
 ```
-$ curl localhost:8080/users -d '{"username": "test", "password": "test"}'
+$ curl localhost:8080/users/ -d '{"username": "test", "password": "test"}'
 ```
 
 Delete user:
 ```
-$ curl -X DELETE localhost:8080/users -d '{"username": "test"}'
+$ curl -X DELETE localhost:8080/users/ -d '{"username": "test"}'
 ```
 
 List all users:
 ```
-$ curl localhost:8080/users
+$ curl localhost:8080/users/
 ```
 
 ## Running

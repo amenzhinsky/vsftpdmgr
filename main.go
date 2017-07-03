@@ -99,8 +99,8 @@ func start(root, pwdfile string) error {
 // handler is needed for integrated testing.
 func handler(m *mgr.Mgr) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", httputil.Log(healthHandler))
-	mux.HandleFunc("/users", httputil.Log(makeUsersHandler(m)))
+	mux.HandleFunc("/health/", httputil.Log(healthHandler))
+	mux.HandleFunc("/users/", httputil.Log(makeUsersHandler(m)))
 	return mux
 }
 
@@ -131,10 +131,7 @@ func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(b)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "write error: %v", err)
-			}
+			w.Write(b)
 		case http.MethodPost:
 			u, err := userFromRequest(r)
 			if err != nil {
@@ -143,6 +140,12 @@ func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 			}
 
 			if err := m.Save(r.Context(), u); err != nil {
+				if err == mgr.ErrInvalidUser {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					w.Write([]byte("len(username) < 4 || len(password) < 4"))
+					return
+				}
+
 				httpError(w, err)
 				return
 			}
