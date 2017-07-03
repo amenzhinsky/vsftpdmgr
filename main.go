@@ -89,8 +89,17 @@ func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 				return
 			}
 
-			if err = httputil.JSON(w, users); err != nil {
+			b, err := json.Marshal(users)
+			if err != nil {
 				httpError(w, err)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, err = w.Write(b)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "write error: %v", err)
 			}
 		case http.MethodPost:
 			u, err := userFromRequest(r)
