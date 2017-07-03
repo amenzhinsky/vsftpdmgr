@@ -161,7 +161,7 @@ func (m *Mgr) list(ctx context.Context) (users []*User, err error) {
 	return users, rows.Err()
 }
 
-// flush saves users list from database to pwdfile.
+// sync saves users list from database to the pwdfile.
 func (m *Mgr) sync(ctx context.Context) error {
 	users, err := m.list(ctx)
 	if err != nil {

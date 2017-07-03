@@ -55,7 +55,6 @@ func TestAll(t *testing.T) {
 	}
 
 	rs = request(t, http.MethodGet, ts.URL+"/users", nil)
-
 	testResponseContains(t, rs, "test")
 }
 
