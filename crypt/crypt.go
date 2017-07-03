@@ -44,7 +44,7 @@ func Crypt(pass, salt string) (string, error) {
 	return C.GoString(enc), nil
 }
 
-// [a-zA-Z0-9./]
+// Salt dictionary [a-zA-Z0-9./].
 var salt = [...]byte{
 	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
 	'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
@@ -52,9 +52,11 @@ var salt = [...]byte{
 	'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '/'}
 
+// Salt random number generator.
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-// MD5 hashes the provided password with random salt.
+// MD5 hashes the provided password with a random salt.
+// Equivalent of C's `crypt(pass, "$1$salt$")`.
 func MD5(pass string) (string, error) {
 	b := make([]byte, 8)
 	for i := 0; i < 8; i ++ {

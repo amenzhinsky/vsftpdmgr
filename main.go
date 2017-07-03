@@ -1,14 +1,15 @@
 package main
 
 import (
-	"database/sql"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
-	"os/signal"
 
-	_ "github.com/lib/pq"
+	"github.com/amenzhinsky/vsftpdmgr/httputil"
 	"github.com/amenzhinsky/vsftpdmgr/mgr"
 )
 
@@ -38,59 +39,39 @@ func main() {
 	// via environment variable for security reasons
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		fmt.Fprint(os.Stderr, "$DATABASE_URL is not provided\n")
+		fmt.Fprint(os.Stderr, "DATABASE_URL is not provided\n")
 		os.Exit(1)
 	}
 
-	if err := start(flag.Arg(0), flag.Arg(1), databaseURL); err != nil {
+	if err := start(addrFlag, certFileFlag, keyFileFlag, flag.Arg(0), flag.Arg(1), databaseURL); err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
 }
 
-func start(root, pwdfile, databaseURL string) error {
-	db, err := sql.Open("postgres", databaseURL)
+// we use separate function here to make sure that all
+// defer callback are executed before the process exits.
+func start(addr, certFile, keyFile, root, pwdfile, databaseURL string) error {
+	m, err := mgr.New(root, pwdfile, databaseURL)
 	if err != nil {
 		return err
 	}
+	defer m.Close()
 
-	m, err := mgr.New(root, pwdfile, db)
-	if err != nil {
-		return err
-	}
+	log.Printf("Listening on %s", addr)
+	return httputil.ListenAndServe(addr, handler(m), certFile, keyFile)
+}
 
+// handler is needed for integrated testing.
+func handler(m *mgr.Mgr) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/users", makeUsersHandler(m))
-
-	srv := &http.Server{Addr: addrFlag, Handler: mux}
-	closeOnSignal(srv)
-
-	if certFileFlag != "" && keyFileFlag != "" {
-		err = srv.ListenAndServeTLS(certFileFlag, keyFileFlag)
-	} else {
-		err = srv.ListenAndServe()
-	}
-
-	// ignore closed server errors
-	if err.Error() == "http: Server closed" {
-		err = nil
-	}
-	return err
-}
-
-// closeOnSignal closes srv when an interrupt signal received
-func closeOnSignal(srv *http.Server) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
-	go func() {
-		<-sigCh
-		srv.Close()
-	}()
+	return mux
 }
 
 // GET /health
-func healthHandler(w http.ResponseWriter, r *http.Request) {
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte("ok\n"))
 	w.WriteHeader(http.StatusOK)
 }
@@ -100,6 +81,60 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 // DELETE /users {"name": ""}
 func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			users, err := m.List(r.Context())
+			if err != nil {
+				httpError(w, err)
+				return
+			}
 
+			if err = httputil.JSON(w, users); err != nil {
+				httpError(w, err)
+			}
+		case http.MethodPost:
+			u, err := userFromRequest(r)
+			if err != nil {
+				httpError(w, err)
+				return
+			}
+
+			if err := m.Save(r.Context(), u); err != nil {
+				httpError(w, err)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+		case http.MethodDelete:
+			u, err := userFromRequest(r)
+			if err != nil {
+				httpError(w, err)
+				return
+			}
+
+			if err := m.Delete(r.Context(), u); err != nil {
+				httpError(w, err)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	}
+}
+
+// userFromRequest parses json request into User structure.
+func userFromRequest(r *http.Request) (*mgr.User, error) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	var u mgr.User
+	return &u, json.Unmarshal(b, &u)
+}
+
+func httpError(w http.ResponseWriter, err error) {
+	fmt.Printf("http error: %v\n", err)
+	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }

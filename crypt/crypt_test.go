@@ -1,9 +1,6 @@
 package crypt
 
-import (
-	"testing"
-	"fmt"
-)
+import "testing"
 
 func TestCrypt(t *testing.T) {
 	t.Parallel()
@@ -31,6 +28,4 @@ func TestMD5(t *testing.T) {
 	if len(p) != 34 {
 		t.Errorf("s, _, MD5(%q); len(s) = %d, want %d", "test", len(p), 34)
 	}
-
-	fmt.Println(p)
 }
