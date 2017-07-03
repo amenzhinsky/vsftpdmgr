@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/amenzhinsky/vsftpdmgr/httputil"
 	"github.com/amenzhinsky/vsftpdmgr/mgr"
@@ -17,6 +19,7 @@ var (
 	addrFlag     = ":8080"
 	certFileFlag = ""
 	keyFileFlag  = ""
+	syncFlag     = false
 )
 
 func main() {
@@ -28,6 +31,7 @@ func main() {
 	flag.StringVar(&addrFlag, "addr", addrFlag, "address to listen to")
 	flag.StringVar(&certFileFlag, "cert-file", certFileFlag, "path to TLS certificate file")
 	flag.StringVar(&keyFileFlag, "key-file", keyFileFlag, "path to TLS key file")
+	flag.BoolVar(&syncFlag, "sync", syncFlag, "enable sync mode, required for multi-instance installation")
 	flag.Parse()
 
 	if flag.NArg() != 2 {
@@ -35,6 +39,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := start(flag.Arg(0), flag.Arg(1)); err != nil {
+		fmt.Fprintf(os.Stderr, err.Error()+"\n")
+		os.Exit(1)
+	}
+}
+
+// we use separate function here to make sure that all
+// defer callback are executed before the process exits.
+func start(root, pwdfile string) error {
 	// DATABASE_URL has to passed to the program
 	// via environment variable for security reasons
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -43,23 +56,42 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := start(addrFlag, certFileFlag, keyFileFlag, flag.Arg(0), flag.Arg(1), databaseURL); err != nil {
-		fmt.Fprintf(os.Stderr, err.Error()+"\n")
-		os.Exit(1)
-	}
-}
-
-// we use separate function here to make sure that all
-// defer callback are executed before the process exits.
-func start(addr, certFile, keyFile, root, pwdfile, databaseURL string) error {
 	m, err := mgr.New(root, pwdfile, databaseURL)
 	if err != nil {
 		return err
 	}
 	defer m.Close()
 
-	log.Printf("Listening on %s", addr)
-	return httputil.ListenAndServe(addr, handler(m), certFile, keyFile)
+	// sync data on start
+	if err = m.Sync(context.Background()); err != nil {
+		return err
+	}
+
+	if syncFlag {
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+
+		Loop:
+			for {
+				select {
+				case <-ticker.C:
+					log.Print("Sync users database")
+					if err := m.Sync(context.Background()); err != nil {
+						fmt.Fprintf(os.Stderr, "sync error: %v\n", err)
+					}
+				case <-stopCh:
+					break Loop
+				}
+			}
+		}()
+	}
+
+	log.Printf("Listening on %s", addrFlag)
+	return httputil.ListenAndServe(addrFlag, handler(m), certFileFlag, keyFileFlag)
 }
 
 // handler is needed for integrated testing.
