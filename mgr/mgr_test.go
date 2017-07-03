@@ -2,11 +2,12 @@ package mgr
 
 import (
 	"context"
+	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-	"io"
 )
 
 func TestCRUD(t *testing.T) {
@@ -50,6 +51,7 @@ func TestCRUD(t *testing.T) {
 	}
 	testFileContains(t, pwdfile, user.Username)
 	testListContains(t, m, user)
+	testLocalRootExists(t, root, user.Username)
 
 	// update
 	user.Password = "verysecurepassword"
@@ -58,6 +60,7 @@ func TestCRUD(t *testing.T) {
 	}
 	testFileContains(t, pwdfile, user.Username)
 	testListContains(t, m, user)
+	testLocalRootExists(t, root, user.Username)
 
 	// delete
 	if err := m.Delete(context.Background(), user); err != nil {
@@ -65,6 +68,7 @@ func TestCRUD(t *testing.T) {
 	}
 	testFileDoesntContain(t, pwdfile, user.Username)
 	testListDoesntContain(t, m, user)
+	testLocalRootDoesntExists(t, root, user.Username)
 }
 
 func testFileContains(t *testing.T, f *os.File, s string) {
@@ -114,4 +118,26 @@ func listContains(t *testing.T, m *Mgr, user *User) bool {
 		}
 	}
 	return false
+}
+
+func testLocalRootExists(t *testing.T, root, username string) {
+	if !localRootExists(t, root, username) {
+		t.Errorf("local root for user %s doesn't exist", username)
+	}
+}
+
+func testLocalRootDoesntExists(t *testing.T, root, username string) {
+	if localRootExists(t, root, username) {
+		t.Errorf("local root for user %s exists, but it's not expected to", username)
+	}
+}
+
+func localRootExists(t *testing.T, root, username string) bool {
+	f, err := os.Lstat(filepath.Join(root, username))
+	if os.IsNotExist(err) {
+		return false
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	return f.IsDir()
 }

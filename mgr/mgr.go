@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"syscall"
@@ -95,6 +97,12 @@ func (m *Mgr) Save(ctx context.Context, user *User) error {
 		return err
 	}
 
+	// create user's local root
+	err = os.Mkdir(filepath.Join(m.root, user.Username), 0755)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
 	// upsert record on username conflict
 	_, err = m.db.ExecContext(ctx, `INSERT INTO users (username, password) VALUES ($1, $2)
 		ON CONFLICT (username) DO UPDATE SET password = $2`, user.Username, password)
@@ -144,6 +152,7 @@ func (m *Mgr) Close() error {
 	return nil
 }
 
+// list retrieves list of users from the database.
 func (m *Mgr) list(ctx context.Context) (users []*User, err error) {
 	rows, err := m.db.QueryContext(ctx, `SELECT username, password FROM users`)
 	if err != nil {
@@ -184,7 +193,30 @@ func (m *Mgr) sync(ctx context.Context) error {
 			return err
 		}
 	}
+
+	// remove user local roots if they're not in the list.
+	ff, err := ioutil.ReadDir(m.root)
+	if err != nil {
+		return err
+	}
+
+	for _, fi := range ff {
+		if !containsUser(users, fi.Name()) {
+			if err = os.RemoveAll(filepath.Join(m.root, fi.Name())); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+func containsUser(users []*User, username string) bool {
+	for _, u := range users {
+		if u.Username == username {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Mgr) Clean() error {
