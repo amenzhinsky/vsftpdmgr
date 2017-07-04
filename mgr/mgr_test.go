@@ -2,7 +2,6 @@ package mgr
 
 import (
 	"context"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -49,7 +48,7 @@ func TestCRUD(t *testing.T) {
 	if err := m.Save(context.Background(), user); err != nil {
 		t.Fatal(err)
 	}
-	testFileContains(t, pwdfile, user.Username)
+	testFileContains(t, pwdfile.Name(), user.Username)
 	testListContains(t, m, user)
 	testLocalRootExists(t, root, user.Username)
 
@@ -58,7 +57,7 @@ func TestCRUD(t *testing.T) {
 	if err := m.Save(context.Background(), user); err != nil {
 		t.Fatal(err)
 	}
-	testFileContains(t, pwdfile, user.Username)
+	testFileContains(t, pwdfile.Name(), user.Username)
 	testListContains(t, m, user)
 	testLocalRootExists(t, root, user.Username)
 
@@ -66,29 +65,25 @@ func TestCRUD(t *testing.T) {
 	if err := m.Delete(context.Background(), user); err != nil {
 		t.Fatal(err)
 	}
-	testFileDoesntContain(t, pwdfile, user.Username)
+	testFileDoesntContain(t, pwdfile.Name(), user.Username)
 	testListDoesntContain(t, m, user)
 	testLocalRootDoesntExists(t, root, user.Username)
 }
 
-func testFileContains(t *testing.T, f *os.File, s string) {
+func testFileContains(t *testing.T, f, s string) {
 	if !fileContains(t, f, s) {
 		t.Errorf("file expected to contain %q but it doesn't", s)
 	}
 }
 
-func testFileDoesntContain(t *testing.T, f *os.File, s string) {
+func testFileDoesntContain(t *testing.T, f, s string) {
 	if fileContains(t, f, s) {
 		t.Errorf("file expected not to contain %q but it does", s)
 	}
 }
 
-func fileContains(t *testing.T, f *os.File, s string) bool {
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		t.Fatal(err)
-	}
-
-	b, err := ioutil.ReadAll(f)
+func fileContains(t *testing.T, f string, s string) bool {
+	b, err := ioutil.ReadFile(f)
 	if err != nil {
 		t.Fatal(err)
 	}

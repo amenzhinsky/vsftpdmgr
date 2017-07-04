@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/amenzhinsky/vsftpdmgr/httputil"
 	"github.com/amenzhinsky/vsftpdmgr/mgr"
@@ -17,7 +15,6 @@ var (
 	addrFlag     = ":8080"
 	certFileFlag = ""
 	keyFileFlag  = ""
-	syncFlag     = false
 )
 
 func main() {
@@ -29,7 +26,6 @@ func main() {
 	flag.StringVar(&addrFlag, "addr", addrFlag, "address to listen to")
 	flag.StringVar(&certFileFlag, "cert-file", certFileFlag, "path to TLS certificate file")
 	flag.StringVar(&keyFileFlag, "key-file", keyFileFlag, "path to TLS key file")
-	flag.BoolVar(&syncFlag, "sync", syncFlag, "enable sync mode, required for multi-instance installation")
 	flag.Parse()
 
 	if flag.NArg() != 2 {
@@ -59,36 +55,6 @@ func start(root, pwdfile string) error {
 		return err
 	}
 	defer m.Close()
-
-	// sync data on start
-	if err = m.Sync(context.Background()); err != nil {
-		return err
-	}
-
-	// sync mode in the background,
-	// stopped when http server exits.
-	if syncFlag {
-		stopCh := make(chan struct{})
-		defer close(stopCh)
-
-		go func() {
-			ticker := time.NewTicker(5 * time.Second)
-			defer ticker.Stop()
-
-		Loop:
-			for {
-				select {
-				case <-ticker.C:
-					log.Print("Sync users database")
-					if err := m.Sync(context.Background()); err != nil {
-						fmt.Fprintf(os.Stderr, "sync error: %v\n", err)
-					}
-				case <-stopCh:
-					break Loop
-				}
-			}
-		}()
-	}
 
 	log.Printf("Listening on %s", addrFlag)
 	return httputil.ListenAndServe(addrFlag, handler(m), certFileFlag, keyFileFlag)

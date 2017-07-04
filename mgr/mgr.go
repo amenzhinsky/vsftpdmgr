@@ -5,12 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
-	"syscall"
 
 	"github.com/amenzhinsky/vsftpdmgr/crypt"
 	_ "github.com/lib/pq"
@@ -24,10 +23,10 @@ type User struct {
 
 // Mgr is vsftpd users management entity.
 type Mgr struct {
-	mu   sync.Mutex
-	db   *sql.DB
-	pwd  *os.File
-	root string
+	mu      sync.Mutex
+	db      *sql.DB
+	pwdfile string
+	root    string
 }
 
 // New creates new Mgr.
@@ -44,23 +43,24 @@ func New(root, pwdfile, databaseURL string) (*Mgr, error) {
 		return nil, err
 	}
 
+	// create local root if it doesn't exist
 	if _, err := os.Lstat(root); err != nil {
-		return nil, err
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		if err = os.MkdirAll(root, 0755); err != nil {
+			return nil, err
+		}
 	}
 
-	f, err := os.OpenFile(pwdfile, os.O_RDWR, 0644)
+	// try to open pwdfile and create it if it doesn't exist
+	f, err := os.OpenFile(pwdfile, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	// lock pwdfile exclusively to prevent running
-	// multiple Mgr instances on the same pwd file.
-	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
-		return nil, err
-	}
-
-	return &Mgr{pwd: f, root: root, db: db}, nil
+	return &Mgr{pwdfile: pwdfile, root: root, db: db}, nil
 }
 
 // List returns list of all users.
@@ -130,28 +130,12 @@ func (m *Mgr) Delete(ctx context.Context, user *User) error {
 	return m.sync(ctx)
 }
 
-// Sync synchronizes users list from database with pwdfile and local root.
-func (m *Mgr) Sync(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return m.sync(ctx)
-}
-
 // Close shuts down manager.
 func (m *Mgr) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if err := m.db.Close(); err != nil {
-		fmt.Fprintf(os.Stderr, "mgr error: %v\n", err)
-	}
-
-	if err := syscall.Flock(int(m.pwd.Fd()), syscall.LOCK_UN); err != nil {
-		fmt.Fprintf(os.Stderr, "mgr error: %v\n", err)
-	}
-
-	if err := m.pwd.Close(); err != nil {
 		fmt.Fprintf(os.Stderr, "mgr error: %v\n", err)
 	}
 
@@ -180,34 +164,46 @@ func (m *Mgr) list(ctx context.Context) (users []*User, err error) {
 var header = []byte("# This file is managed by vsftpdmgr, all changes will be overwritten\n\n")
 
 // sync saves users list from database to the pwdfile.
-func (m *Mgr) sync(ctx context.Context) error {
+func (m *Mgr) sync(ctx context.Context) (err error) {
 	users, err := m.list(ctx)
 	if err != nil {
-		return err
+		return
 	}
-	if err := os.Truncate(m.pwd.Name(), 0); err != nil {
-		return err
+
+	t, err := ioutil.TempFile("", "")
+	if err != nil {
+		return
 	}
-	if _, err := m.pwd.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
+	defer func() {
+		t.Close()
+		if err != nil {
+			os.Remove(t.Name())
+		}
+	}()
 
 	// sort users alphabetically
 	sort.Slice(users, func(i, j int) bool {
 		return users[i].Username < users[j].Username
 	})
 
-	// write header
-	if _, err = m.pwd.Write(header); err != nil {
-		return err
+	// write header and content
+	if _, err = t.Write(header); err != nil {
+		return
 	}
-
 	for _, u := range users {
-		if _, err := m.pwd.Write([]byte(u.Username + ":" + u.Password + "\n")); err != nil {
-			return err
+		if _, err = t.Write([]byte(u.Username + ":" + u.Password + "\n")); err != nil {
+			return
 		}
 	}
-	return nil
+
+	// safely replace existing pwdfile file
+	if err = os.Remove(m.pwdfile); err != nil {
+		return
+	}
+	if err = os.Rename(t.Name(), m.pwdfile); err != nil {
+		return
+	}
+	return
 }
 
 // Clean delete all records from the users table.
