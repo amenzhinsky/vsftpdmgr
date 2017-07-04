@@ -181,23 +181,21 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 
 	// check if __new__ file exists, if it does then
 	// another process in the middle of the sync mode.
-	tries := 0
 	newPath := m.pwdfile + "__new__"
-	for {
-		if _, err = os.Lstat(newPath); os.IsNotExist(err) {
-			break
-		}
 
-		tries++
-		if tries == 10 {
-			return fmt.Errorf("%s exists but it shouldn't", newPath)
+	var t *os.File
+	for i := 0;; i++ {
+		t, err = os.OpenFile(newPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
+		if os.IsExist(err) {
+			if i == 30 {
+				return fmt.Errorf("%s cannot create exclusively within 3s, try to remove it manually", newPath)
+			}
+			time.Sleep(100 * time.Millisecond)
+			continue
+		} else if err != nil {
+			return
 		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	t, err := os.OpenFile(newPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
-	if err != nil {
-		return
+		break
 	}
 	defer func() {
 		t.Close()
