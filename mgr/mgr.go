@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/amenzhinsky/vsftpdmgr/crypt"
 	_ "github.com/lib/pq"
@@ -178,13 +179,23 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 		return
 	}
 
-	path := m.pwdfile+"__new__"
-	stat, err := os.Lstat(path)
-	if err == nil {
-		return fmt.Errorf("%s file exists bui it shouldn't", stat.Name())
+	// check if __new__ file exists, if it does then
+	// another process in the middle of the sync mode.
+	tries := 0
+	newPath := m.pwdfile + "__new__"
+	for {
+		if _, err = os.Lstat(newPath); os.IsNotExist(err) {
+			break
+		}
+
+		tries++
+		if tries == 10 {
+			return fmt.Errorf("%s exists but it shouldn't", newPath)
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
-	t, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
+	t, err := os.OpenFile(newPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
 	if err != nil {
 		return
 	}
@@ -210,12 +221,19 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 		}
 	}
 
-	// safely replace existing pwdfile file
-	if err = os.Remove(m.pwdfile); err != nil && !os.IsNotExist(err) {
+	// safely replace the pwdfile with new one
+	oldPath := m.pwdfile + "__old__"
+	if err = os.Rename(m.pwdfile, oldPath); err != nil {
 		return
 	}
+	defer func() {
+		if err == nil {
+			os.Remove(oldPath)
+		}
+	}()
+
 	if err = os.Rename(t.Name(), m.pwdfile); err != nil {
-		return
+		os.Rename(oldPath, m.pwdfile) // try to revert changes
 	}
 	return
 }
