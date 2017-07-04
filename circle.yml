@@ -1,4 +1,18 @@
 ---
 machine:
   environment:
+    GOPATH: "${HOME}/.go_project"
+    BUILD_PATH: "${GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
     TEST_DATABASE_URL: postgresql://ubuntu:@127.0.0.1:5432/circle_test
+
+dependencies:
+  pre:
+    - mkdir -p ~/.go_project/src/github.com/${CIRCLE_PROJECT_USERNAME}
+    - ln -s ${HOME}/${CIRCLE_PROJECT_REPONAME} ${BUILD_PATH}
+
+  override:
+    - go version
+
+test:
+  override:
+    - cd $BUILD_PATH && make test

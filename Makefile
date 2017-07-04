@@ -1,5 +1,8 @@
-all:
+build:
 	@go build -i -ldflags="-s -w"
+
+release: build
+	@tar cvzf vsftpdmgr_linux_amd64.tar.gz vsftpdmgr
 
 test:
 	@go test -i -race ./...
