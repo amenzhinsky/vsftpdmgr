@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ var (
 	addrFlag     = ":8080"
 	certFileFlag = ""
 	keyFileFlag  = ""
+	syncFlag     = false
 )
 
 func main() {
@@ -26,6 +28,7 @@ func main() {
 	flag.StringVar(&addrFlag, "addr", addrFlag, "address to listen to")
 	flag.StringVar(&certFileFlag, "cert-file", certFileFlag, "path to TLS certificate file")
 	flag.StringVar(&keyFileFlag, "key-file", keyFileFlag, "path to TLS key file")
+	flag.BoolVar(&syncFlag, "sync", syncFlag, "sync pwdfile with database data and exit")
 	flag.Parse()
 
 	if flag.NArg() != 2 {
@@ -55,6 +58,10 @@ func start(root, pwdfile string) error {
 		return err
 	}
 	defer m.Close()
+
+	if syncFlag {
+		return m.Sync(context.Background())
+	}
 
 	log.Printf("Listening on %s", addrFlag)
 	return httputil.ListenAndServe(addrFlag, handler(m), certFileFlag, keyFileFlag)

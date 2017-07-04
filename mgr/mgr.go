@@ -129,6 +129,15 @@ func (m *Mgr) Delete(ctx context.Context, user *User) error {
 	return m.sync(ctx)
 }
 
+// Sync synchronizes the pwdfile with the database data.
+// Useful in case the pwdfile is lost.
+func (m *Mgr) Sync(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.sync(ctx)
+}
+
 // Close shuts down manager.
 func (m *Mgr) Close() error {
 	m.mu.Lock()
