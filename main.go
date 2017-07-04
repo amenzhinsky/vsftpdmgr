@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -123,23 +121,18 @@ func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 				return
 			}
 
-			b, err := json.Marshal(users)
-			if err != nil {
+			if err := httputil.WriteJSON(w, users); err != nil {
 				httpError(w, err)
 				return
 			}
-
-			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			w.Write(b)
 		case http.MethodPost:
-			u, err := userFromRequest(r)
-			if err != nil {
+			var u mgr.User
+			if err := httputil.ReadJSON(r, &u); err != nil {
 				httpError(w, err)
 				return
 			}
 
-			if err := m.Save(r.Context(), u); err != nil {
+			if err := m.Save(r.Context(), &u); err != nil {
 				if err == mgr.ErrInvalidUser {
 					w.WriteHeader(http.StatusUnprocessableEntity)
 					w.Write([]byte("len(username) < 4 || len(password) < 4"))
@@ -152,13 +145,13 @@ func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 
 			w.WriteHeader(http.StatusOK)
 		case http.MethodDelete:
-			u, err := userFromRequest(r)
-			if err != nil {
+			var u mgr.User
+			if err := httputil.ReadJSON(r, &u); err != nil {
 				httpError(w, err)
 				return
 			}
 
-			if err := m.Delete(r.Context(), u); err != nil {
+			if err := m.Delete(r.Context(), &u); err != nil {
 				httpError(w, err)
 				return
 			}
@@ -168,16 +161,6 @@ func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	}
-}
-
-// userFromRequest parses json request into User structure.
-func userFromRequest(r *http.Request) (*mgr.User, error) {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return nil, err
-	}
-	var u mgr.User
-	return &u, json.Unmarshal(b, &u)
 }
 
 func httpError(w http.ResponseWriter, err error) {
