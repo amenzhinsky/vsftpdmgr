@@ -30,7 +30,7 @@ $ export DATABASE_URL=postgres://user:pass@localhost:5432/vsftpd
 $ vsftpdmgr /etc/vsftpd.passwd /srv/ftp
 ```
 
-**WARNING**: for multi-server installation the pwdfile has to be accessible by all instances, e.g. put it in a nts directory. Otherwise it can lead to unexpected behaviour.
+**WARNING**: for multi-server installation the pwdfile has to be accessible by all instances, e.g. put it on a nfs. Otherwise it can lead to unexpected behaviour.
 
 ## Testing
 

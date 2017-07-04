@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,8 +24,8 @@ type User struct {
 type Mgr struct {
 	mu      sync.Mutex
 	db      *sql.DB
-	pwdfile string
 	root    string
+	pwdfile string
 }
 
 // New creates new Mgr.
@@ -100,7 +99,7 @@ func (m *Mgr) Save(ctx context.Context, user *User) error {
 	}
 
 	// create user's local root
-	err = os.Mkdir(filepath.Join(m.root, user.Username), 0755)
+	err = os.MkdirAll(filepath.Join(m.root, user.Username), 0755)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -170,7 +169,13 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 		return
 	}
 
-	t, err := ioutil.TempFile("", "")
+	path := m.pwdfile+"__new__"
+	stat, err := os.Lstat(path)
+	if err == nil {
+		return fmt.Errorf("%s file exists bui it shouldn't", stat.Name())
+	}
+
+	t, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
@@ -197,7 +202,7 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 	}
 
 	// safely replace existing pwdfile file
-	if err = os.Remove(m.pwdfile); err != nil {
+	if err = os.Remove(m.pwdfile); err != nil && !os.IsNotExist(err) {
 		return
 	}
 	if err = os.Rename(t.Name(), m.pwdfile); err != nil {
