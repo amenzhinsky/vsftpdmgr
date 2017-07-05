@@ -16,6 +16,7 @@ var (
 	addrFlag     = ":8080"
 	certFileFlag = ""
 	keyFileFlag  = ""
+	caFileFlag   = ""
 	syncFlag     = false
 )
 
@@ -28,7 +29,8 @@ func main() {
 	flag.StringVar(&addrFlag, "addr", addrFlag, "address to listen to")
 	flag.StringVar(&certFileFlag, "cert-file", certFileFlag, "path to TLS certificate file")
 	flag.StringVar(&keyFileFlag, "key-file", keyFileFlag, "path to TLS key file")
-	flag.BoolVar(&syncFlag, "sync", syncFlag, "sync pwdfile with database data and exit")
+	flag.StringVar(&caFileFlag, "ca-file", caFileFlag, "path to TLS CA file, enables ssl client authentication")
+	flag.BoolVar(&syncFlag, "sync", syncFlag, "sync pwdfile with database and exit immediately")
 	flag.Parse()
 
 	if flag.NArg() != 2 {
@@ -64,7 +66,7 @@ func start(root, pwdfile string) error {
 	}
 
 	log.Printf("Listening on %s", addrFlag)
-	return httputil.ListenAndServe(addrFlag, handler(m), certFileFlag, keyFileFlag)
+	return httputil.ListenAndServe(addrFlag, handler(m), certFileFlag, keyFileFlag, caFileFlag)
 }
 
 // handler is needed for integrated testing.

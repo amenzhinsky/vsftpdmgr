@@ -27,14 +27,22 @@ Currently only postgresql is supported.
 
 ```
 $ export DATABASE_URL=postgres://user:pass@localhost:5432/vsftpd
-$ vsftpdmgr /etc/vsftpd.passwd /srv/ftp
+$ vsftpdmgr \
+	-addr :8080 \
+	-ca-file  /etc/ssl/certs/ca.crt \
+	-cert-file /etc/ssl/certs/vsftpdmgr.crt \
+	-key-file /etc/ssl/private/vsftpdmgr.key \
+	/etc/vsftpd.passwd \
+	/srv/ftp
 ```
 
 **WARNING**: for multi-server installation the pwdfile has to be accessible by all instances, e.g. put it on a nfs. Otherwise it can lead to unexpected behaviour.
 
 ## Testing
 
+Don't forget to add `?sslmode=disable` if ssl is disabled for localhost connections (default behaviour).
+
 ```
-$ export TEST_DATABASE_URL=postgres://user:pass@localhost:5432/vsftpd_test?sslmode=disable
+$ export TEST_DATABASE_URL=postgres://user:pass@localhost:5432/vsftpd_test
 $ make test
 ```

@@ -19,7 +19,7 @@ func TestListenAndServe(t *testing.T) {
 		p.Signal(os.Interrupt)
 	}()
 
-	if err := ListenAndServe(":0", nil, "", ""); err != nil {
+	if err := ListenAndServe(":0", nil, "", "", ""); err != nil {
 		t.Fatal(err)
 	}
 }
