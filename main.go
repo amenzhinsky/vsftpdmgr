@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"time"
 
 	"github.com/amenzhinsky/vsftpdmgr/httputil"
 	"github.com/amenzhinsky/vsftpdmgr/mgr"
@@ -66,7 +68,32 @@ func start(root, pwdfile string) error {
 	}
 
 	log.Printf("Listening on %s", addrFlag)
-	return httputil.ListenAndServe(addrFlag, handler(m), certFileFlag, keyFileFlag, caFileFlag)
+
+	srv := &http.Server{Addr: addrFlag, Handler: handler(m)}
+
+	// stop server on SIGINT
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	go func() {
+		var exit bool
+		for range sigCh {
+			if exit {
+				os.Exit(1)
+			}
+			exit = true
+
+			ctx := context.Background()
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			if err := srv.Shutdown(ctx); err != nil {
+				fmt.Fprintf(os.Stderr, "shutdown error: %v\n", err)
+				os.Exit(1)
+			}
+		}
+	}()
+
+	return httputil.ListenAndServe(srv, certFileFlag, keyFileFlag, caFileFlag)
 }
 
 // handler is needed for integrated testing.
