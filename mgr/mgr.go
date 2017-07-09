@@ -81,7 +81,7 @@ func (m *Mgr) List(ctx context.Context) ([]*User, error) {
 }
 
 // ErrInvalidUser is returned when user cannot be saved.
-var ErrInvalidUser = errors.New("user is not valid")
+var ErrInvalidUser = errors.New("user is not valid, len(username) < 4 or len(password) < 4")
 
 // Save saves user to the database or update it's password if
 // it already exists.

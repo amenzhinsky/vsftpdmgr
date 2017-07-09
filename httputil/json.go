@@ -12,7 +12,10 @@ func ReadJSON(r *http.Request, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, v)
+	if err = json.Unmarshal(b, v); err != nil {
+		return &HTTPError{Code: http.StatusBadRequest, Err: err}
+	}
+	return nil
 }
 
 func WriteJSON(w http.ResponseWriter, v interface{}) error {

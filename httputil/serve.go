@@ -10,7 +10,7 @@ import (
 
 // ListenAndServe starts listening on srv.Addr, TLS encryption
 // is enabled when certFile and keyFile are passed.
-// caFile enables ssl client authentication.
+// caFile enables mutual TLS authentication, requires TLS encryption.
 func ListenAndServe(srv *http.Server, certFile, keyFile, caFile string) error {
 	if caFile != "" {
 		if err := enableTLSMutualAuth(srv, caFile); err != nil {

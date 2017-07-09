@@ -20,6 +20,7 @@ var (
 	keyFileFlag  = ""
 	caFileFlag   = ""
 	syncFlag     = false
+	traceFlag    = false
 )
 
 func main() {
@@ -31,8 +32,9 @@ func main() {
 	flag.StringVar(&addrFlag, "addr", addrFlag, "address to listen to")
 	flag.StringVar(&certFileFlag, "cert-file", certFileFlag, "path to TLS certificate file")
 	flag.StringVar(&keyFileFlag, "key-file", keyFileFlag, "path to TLS key file")
-	flag.StringVar(&caFileFlag, "ca-file", caFileFlag, "path to TLS CA file, enables ssl client authentication")
+	flag.StringVar(&caFileFlag, "ca-file", caFileFlag, "path to TLS CA file, enables TLS mutual authentication")
 	flag.BoolVar(&syncFlag, "sync", syncFlag, "sync pwdfile with database and exit immediately")
+	flag.BoolVar(&traceFlag, "trace", traceFlag, "enable http requests tracing")
 	flag.Parse()
 
 	if flag.NArg() != 2 {
@@ -98,74 +100,74 @@ func start(root, pwdfile string) error {
 
 // handler is needed for integrated testing.
 func handler(m *mgr.Mgr) http.Handler {
+	mk := func(h httputil.HandlerFunc) http.HandlerFunc {
+		if traceFlag {
+			h = httputil.Trace(h)
+		}
+		h = httputil.Log(h)
+
+		return httputil.WrapFunc(h)
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health/", httputil.Log(healthHandler))
-	mux.HandleFunc("/users/", httputil.Log(makeUsersHandler(m)))
+	mux.HandleFunc("/health/", mk(healthHandler))
+	mux.HandleFunc("/users/", mk(makeUsersHandler(m)))
 	return mux
 }
 
 // GET /health
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Write([]byte("ok\n"))
+func healthHandler(w http.ResponseWriter, _ *http.Request) error {
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok\n"))
+	return nil
 }
 
 // GET    /users
 // POST   /users {"username": "", "password": ""}
 // DELETE /users {"username": ""}
-func makeUsersHandler(m *mgr.Mgr) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func makeUsersHandler(m *mgr.Mgr) httputil.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
 		switch r.Method {
 		case http.MethodGet:
 			users, err := m.List(r.Context())
 			if err != nil {
-				httpError(w, err)
-				return
+				return err
 			}
 
-			if err := httputil.WriteJSON(w, users); err != nil {
-				httpError(w, err)
-				return
+			if err = httputil.WriteJSON(w, users); err != nil {
+				return err
 			}
 		case http.MethodPost:
 			var u mgr.User
 			if err := httputil.ReadJSON(r, &u); err != nil {
-				httpError(w, err)
-				return
+				return err
 			}
 
 			if err := m.Save(r.Context(), &u); err != nil {
 				if err == mgr.ErrInvalidUser {
-					w.WriteHeader(http.StatusUnprocessableEntity)
-					w.Write([]byte("len(username) < 4 || len(password) < 4"))
-					return
+					err = &httputil.HTTPError{
+						Code: http.StatusUnprocessableEntity,
+						Err:  err,
+					}
 				}
-
-				httpError(w, err)
-				return
+				return err
 			}
 
 			w.WriteHeader(http.StatusOK)
 		case http.MethodDelete:
 			var u mgr.User
 			if err := httputil.ReadJSON(r, &u); err != nil {
-				httpError(w, err)
-				return
+				return err
 			}
 
 			if err := m.Delete(r.Context(), &u); err != nil {
-				httpError(w, err)
-				return
+				return err
 			}
 
 			w.WriteHeader(http.StatusOK)
 		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			return httputil.ErrMethodNotAllowed
 		}
+		return nil
 	}
-}
-
-func httpError(w http.ResponseWriter, err error) {
-	fmt.Printf("http error: %v\n", err)
-	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }

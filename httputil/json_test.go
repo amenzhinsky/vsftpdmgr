@@ -1,36 +1,30 @@
 package httputil
 
 import (
-	"testing"
-	"net/http/httptest"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"testing"
 )
 
 func TestReadJSON(t *testing.T) {
 	t.Parallel()
 
-	var s struct {
-		Foo string `json:"foo"`
-	}
-
+	s := map[string]string{}
 	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"foo": "bar"}`))
 	if err := ReadJSON(r, &s); err != nil {
 		t.Fatal(err)
 	}
 
-	if s.Foo != "bar" {
-		t.Errorf("ReadJSON(r, s): s.Foo = %q, want %q", s.Foo, "bar")
+	if s["foo"] != "bar" {
+		t.Errorf("ReadJSON(r, s): s.Foo = %q, want %q", s["foo"], "bar")
 	}
 }
 
 func TestWriteJSON(t *testing.T) {
 	t.Parallel()
 
-	s := struct {
-		Foo string `json:"foo"`
-	}{Foo: "bar"}
-
+	s := map[string]string{"foo": "bar"}
 	w := httptest.NewRecorder()
 	if err := WriteJSON(w, &s); err != nil {
 		t.Fatal(err)
