@@ -19,6 +19,7 @@ var (
 	certFileFlag = ""
 	keyFileFlag  = ""
 	caFileFlag   = ""
+	gzipFlag     = false
 	syncFlag     = false
 	traceFlag    = false
 )
@@ -33,6 +34,7 @@ func main() {
 	flag.StringVar(&certFileFlag, "cert-file", certFileFlag, "path to TLS certificate file")
 	flag.StringVar(&keyFileFlag, "key-file", keyFileFlag, "path to TLS key file")
 	flag.StringVar(&caFileFlag, "ca-file", caFileFlag, "path to TLS CA file, enables TLS mutual authentication")
+	flag.BoolVar(&gzipFlag, "gzip", gzipFlag, "enables gzip compression of HTTP traffic")
 	flag.BoolVar(&syncFlag, "sync", syncFlag, "sync pwdfile with database and exit immediately")
 	flag.BoolVar(&traceFlag, "trace", traceFlag, "enable http requests tracing")
 	flag.Parse()
@@ -104,6 +106,9 @@ func handler(m *mgr.Mgr) http.Handler {
 		if traceFlag {
 			f = httphelp.Trace(f)
 		}
+		if gzipFlag {
+			f = httphelp.Gzip(f)
+		}
 		f = httphelp.Log(f)
 
 		return httphelp.HandlerFunc(f)
@@ -159,7 +164,6 @@ func makeUsersHandler(m *mgr.Mgr) httphelp.HandlerFunc {
 			if err := m.Delete(r.Context(), &u); err != nil {
 				return err
 			}
-
 			return httphelp.Empty(w, http.StatusOK)
 		default:
 			return httphelp.ErrMethodNotAllowed

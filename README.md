@@ -21,7 +21,7 @@ $ curl localhost:8080/users/
 
 ## Running
 
-Currently only postgresql is supported.
+The service requires a database storage, but currently only postgresql is supported.
 
 `DATABASE_URL` is passed to the binary via environment variable instead of a flag for security reasons.
 

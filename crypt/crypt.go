@@ -21,9 +21,7 @@ import "C"
 
 var mu sync.Mutex
 
-// TODO: implement without using cgo
-// Crypt is a wrapper of C crypt.
-// See `man 3 crypt` for more information.
+// Crypt is language wrapper for glibc crypt(3).
 func Crypt(pass, salt string) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -56,7 +54,7 @@ var salt = [...]byte{
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // MD5 hashes the provided password with a random salt.
-// Equivalent of C's `crypt(pass, "$1$salt$")`.
+// Equivalent of glibc crypt(pass, "$1$salt$").
 func MD5(pass string) (string, error) {
 	b := make([]byte, 8)
 	for i := 0; i < 8; i ++ {
