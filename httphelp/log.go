@@ -1,8 +1,9 @@
 package httphelp
 
 import (
-	"log"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -18,17 +19,33 @@ func (w *logResponseWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
+// LogSink is where logs are written to.
+var LogSink = os.Stdout
+
 // Log is a logging middleware.
 func Log(h HandlerFunc) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
+		if LogSink == nil {
+			panic("LogSink is nil, use io.Discard to silence logging")
+		}
+
 		n := time.Now()
 		l := &logResponseWriter{ResponseWriter: w, status: http.StatusOK}
 		if err := h(l, r); err != nil {
 			return err
 		}
 
-		// TODO: test what happens when WriteHeader or Write haven't called here
-		log.Printf("%s %s code=%d took=%s", r.Method, r.URL, l.status, time.Since(n).String())
+		_, err := fmt.Fprintf(LogSink, "%s %s %s code=%d took=%s\n",
+			n.Format(time.RFC3339),
+			r.Method,
+			r.URL,
+			l.status,
+			time.Since(n).String(),
+		)
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "httphelp log write error: %v\n", err)
+		}
 		return nil
 	}
 }

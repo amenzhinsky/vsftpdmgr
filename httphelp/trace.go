@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// Trace outputs incoming requests info to STDERR.
 func Trace(h HandlerFunc) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		b, err := httputil.DumpRequest(r, true)

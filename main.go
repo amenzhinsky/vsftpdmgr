@@ -100,26 +100,24 @@ func start(root, pwdfile string) error {
 
 // handler is needed for integrated testing.
 func handler(m *mgr.Mgr) http.Handler {
-	mk := func(f httphelp.HandlerFunc) http.HandlerFunc {
+	mk := func(f httphelp.HandlerFunc) http.Handler {
 		if traceFlag {
 			f = httphelp.Trace(f)
 		}
 		f = httphelp.Log(f)
 
-		return httphelp.WrapFunc(f)
+		return httphelp.HandlerFunc(f)
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health/", mk(healthHandler))
-	mux.HandleFunc("/users/", mk(makeUsersHandler(m)))
+	mux.Handle("/health/", mk(healthHandler))
+	mux.Handle("/users/", mk(makeUsersHandler(m)))
 	return mux
 }
 
 // GET /health
 func healthHandler(w http.ResponseWriter, _ *http.Request) error {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok\n"))
-	return nil
+	return httphelp.Text(w, http.StatusOK, "ok\n")
 }
 
 // GET    /users
@@ -134,10 +132,10 @@ func makeUsersHandler(m *mgr.Mgr) httphelp.HandlerFunc {
 				return err
 			}
 
-			return httphelp.WriteJSON(w, users)
+			return httphelp.JSON(w, users)
 		case http.MethodPost:
 			var u mgr.User
-			if err := httphelp.ReadJSON(r, &u); err != nil {
+			if err := httphelp.Bind(r, &u); err != nil {
 				return err
 			}
 
@@ -151,10 +149,10 @@ func makeUsersHandler(m *mgr.Mgr) httphelp.HandlerFunc {
 				return err
 			}
 
-			w.WriteHeader(http.StatusOK)
+			return httphelp.Empty(w, http.StatusOK)
 		case http.MethodDelete:
 			var u mgr.User
-			if err := httphelp.ReadJSON(r, &u); err != nil {
+			if err := httphelp.Bind(r, &u); err != nil {
 				return err
 			}
 
@@ -162,10 +160,9 @@ func makeUsersHandler(m *mgr.Mgr) httphelp.HandlerFunc {
 				return err
 			}
 
-			w.WriteHeader(http.StatusOK)
+			return httphelp.Empty(w, http.StatusOK)
 		default:
 			return httphelp.ErrMethodNotAllowed
 		}
-		return nil
 	}
 }
