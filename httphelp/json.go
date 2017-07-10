@@ -1,12 +1,15 @@
-package httputil
+package httphelp
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
-
 	"net/http"
+	"os"
 )
 
+// ReadJSON reads out JSON-encoded HTTP request, parses it
+// and stores the result is into the value where v points.
 func ReadJSON(r *http.Request, v interface{}) error {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -18,6 +21,7 @@ func ReadJSON(r *http.Request, v interface{}) error {
 	return nil
 }
 
+// WriteJSON writes the JSON encoding of v into w.
 func WriteJSON(w http.ResponseWriter, v interface{}) error {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -26,7 +30,8 @@ func WriteJSON(w http.ResponseWriter, v interface{}) error {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write(b)
-
+	if _, err := w.Write(b); err != nil {
+		fmt.Fprintf(os.Stderr, "http write error: %v", err)
+	}
 	return nil
 }

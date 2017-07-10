@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/amenzhinsky/vsftpdmgr/httputil"
+	"github.com/amenzhinsky/vsftpdmgr/httphelp"
 	"github.com/amenzhinsky/vsftpdmgr/mgr"
 )
 
@@ -95,18 +95,18 @@ func start(root, pwdfile string) error {
 		}
 	}()
 
-	return httputil.ListenAndServe(srv, certFileFlag, keyFileFlag, caFileFlag)
+	return httphelp.ListenAndServe(srv, certFileFlag, keyFileFlag, caFileFlag)
 }
 
 // handler is needed for integrated testing.
 func handler(m *mgr.Mgr) http.Handler {
-	mk := func(h httputil.HandlerFunc) http.HandlerFunc {
+	mk := func(f httphelp.HandlerFunc) http.HandlerFunc {
 		if traceFlag {
-			h = httputil.Trace(h)
+			f = httphelp.Trace(f)
 		}
-		h = httputil.Log(h)
+		f = httphelp.Log(f)
 
-		return httputil.WrapFunc(h)
+		return httphelp.WrapFunc(f)
 	}
 
 	mux := http.NewServeMux()
@@ -123,9 +123,9 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) error {
 }
 
 // GET    /users
-// POST   /users {"username": "", "password": ""}
-// DELETE /users {"username": ""}
-func makeUsersHandler(m *mgr.Mgr) httputil.HandlerFunc {
+// POST   /users {"username": "...", "password": "..."}
+// DELETE /users {"username": "..."}
+func makeUsersHandler(m *mgr.Mgr) httphelp.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		switch r.Method {
 		case http.MethodGet:
@@ -134,18 +134,16 @@ func makeUsersHandler(m *mgr.Mgr) httputil.HandlerFunc {
 				return err
 			}
 
-			if err = httputil.WriteJSON(w, users); err != nil {
-				return err
-			}
+			return httphelp.WriteJSON(w, users)
 		case http.MethodPost:
 			var u mgr.User
-			if err := httputil.ReadJSON(r, &u); err != nil {
+			if err := httphelp.ReadJSON(r, &u); err != nil {
 				return err
 			}
 
 			if err := m.Save(r.Context(), &u); err != nil {
 				if err == mgr.ErrInvalidUser {
-					err = &httputil.HTTPError{
+					err = &httphelp.HTTPError{
 						Code: http.StatusUnprocessableEntity,
 						Err:  err,
 					}
@@ -156,7 +154,7 @@ func makeUsersHandler(m *mgr.Mgr) httputil.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 		case http.MethodDelete:
 			var u mgr.User
-			if err := httputil.ReadJSON(r, &u); err != nil {
+			if err := httphelp.ReadJSON(r, &u); err != nil {
 				return err
 			}
 
@@ -166,7 +164,7 @@ func makeUsersHandler(m *mgr.Mgr) httputil.HandlerFunc {
 
 			w.WriteHeader(http.StatusOK)
 		default:
-			return httputil.ErrMethodNotAllowed
+			return httphelp.ErrMethodNotAllowed
 		}
 		return nil
 	}
