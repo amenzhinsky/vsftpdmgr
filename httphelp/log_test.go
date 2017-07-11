@@ -11,11 +11,10 @@ func TestLog(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
-	h := func(w http.ResponseWriter, r *http.Request) error {
-		return nil
-	}
+	h := Log(func(w http.ResponseWriter, r *http.Request) error {
+		return Text(w, http.StatusOK, "foo")
+	})
 
-	h = Log(h)
 	if err := h(w, r); err != nil {
 		t.Fatal(err)
 	}

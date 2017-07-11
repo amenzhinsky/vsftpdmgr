@@ -13,10 +13,6 @@ type gzipResponseWriter struct {
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
-	// if we don't do this Content-Type will be application/gzip.
-	if ct := w.Header().Get("Content-Type"); ct == "" {
-		w.Header().Set("Content-Type", http.DetectContentType(b))
-	}
 	return w.Writer.Write(b)
 }
 
@@ -30,7 +26,6 @@ func Gzip(h HandlerFunc) HandlerFunc {
 			w.Header().Set("Content-Encoding", "gzip")
 			w = &gzipResponseWriter{Writer: gz, ResponseWriter: w}
 		}
-
 		return h(w, r)
 	}
 }

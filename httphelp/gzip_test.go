@@ -14,11 +14,11 @@ func TestGzip(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set("Accept-Encoding", "gzip, deflate")
-	h := func(w http.ResponseWriter, r *http.Request) error {
+	h := Gzip(func(w http.ResponseWriter, r *http.Request) error {
 		return Text(w, http.StatusOK, "foo")
-	}
+	})
 
-	if err := Gzip(h)(w, r); err != nil {
+	if err := h(w, r); err != nil {
 		t.Fatal(err)
 	}
 

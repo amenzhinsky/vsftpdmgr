@@ -1,9 +1,9 @@
 package httphelp
 
 import (
-	"testing"
-	"net/http/httptest"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestTrace(t *testing.T) {

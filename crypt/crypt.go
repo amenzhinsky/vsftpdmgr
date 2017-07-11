@@ -2,10 +2,10 @@ package crypt
 
 import (
 	"fmt"
-	"sync"
-	"unsafe"
 	"math/rand"
+	"sync"
 	"time"
+	"unsafe"
 )
 
 /*
@@ -57,7 +57,7 @@ var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 // Equivalent of glibc crypt(pass, "$1$salt$").
 func MD5(pass string) (string, error) {
 	b := make([]byte, 8)
-	for i := 0; i < 8; i ++ {
+	for i := 0; i < 8; i++ {
 		b[i] = salt[rnd.Intn(len(salt))]
 	}
 	return Crypt(pass, fmt.Sprintf("$1$%s$", string(b)))

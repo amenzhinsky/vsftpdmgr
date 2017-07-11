@@ -42,7 +42,7 @@ func TestAll(t *testing.T) {
 		m.Close()
 	}()
 
-	ts := httptest.NewServer(handler(m))
+	ts := httptest.NewServer(handler(m, false, false))
 	defer ts.Close()
 
 	rs := request(t, http.MethodPost, ts.URL+"/users/", strings.NewReader(`{

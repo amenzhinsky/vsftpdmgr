@@ -73,7 +73,7 @@ func start(root, pwdfile string) error {
 
 	log.Printf("Listening on %s", addrFlag)
 
-	srv := &http.Server{Addr: addrFlag, Handler: handler(m)}
+	srv := &http.Server{Addr: addrFlag, Handler: handler(m, traceFlag, gzipFlag)}
 
 	// stop server on SIGINT
 	sigCh := make(chan os.Signal, 1)
@@ -101,12 +101,12 @@ func start(root, pwdfile string) error {
 }
 
 // handler is needed for integrated testing.
-func handler(m *mgr.Mgr) http.Handler {
+func handler(m *mgr.Mgr, trace, gzip bool) http.Handler {
 	mk := func(f httphelp.HandlerFunc) http.Handler {
-		if traceFlag {
+		if trace {
 			f = httphelp.Trace(f)
 		}
-		if gzipFlag {
+		if gzip {
 			f = httphelp.Gzip(f)
 		}
 		f = httphelp.Log(f)

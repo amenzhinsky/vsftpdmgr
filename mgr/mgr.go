@@ -58,7 +58,7 @@ func New(root, pwdfile, databaseURL string) (*Mgr, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	f.Close()
 
 	return &Mgr{pwdfile: pwdfile, root: root, db: db}, nil
 }
@@ -147,7 +147,6 @@ func (m *Mgr) Close() error {
 	if err := m.db.Close(); err != nil {
 		fmt.Fprintf(os.Stderr, "mgr error: %v\n", err)
 	}
-
 	return nil
 }
 
@@ -184,7 +183,7 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 	newPath := m.pwdfile + "__new__"
 
 	var t *os.File
-	for i := 0;; i++ {
+	for i := 0; ; i++ {
 		t, err = os.OpenFile(newPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
 		if os.IsExist(err) {
 			if i == 30 {
@@ -224,16 +223,11 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 	if err = os.Rename(m.pwdfile, oldPath); err != nil {
 		return
 	}
-	defer func() {
-		if err == nil {
-			os.Remove(oldPath)
-		}
-	}()
 
 	if err = os.Rename(t.Name(), m.pwdfile); err != nil {
 		os.Rename(oldPath, m.pwdfile) // try to revert changes
 	}
-	return
+	return os.Remove(oldPath)
 }
 
 // Clean delete all records from the users table.
