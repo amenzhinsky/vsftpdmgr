@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -43,31 +44,52 @@ func TestCRUD(t *testing.T) {
 		}
 	}()
 
-	// create
-	user := &User{Username: "test", Password: "notverysecurepassword"}
-	if err := m.Save(context.Background(), user); err != nil {
+	usr, err := user.Current()
+	if err != nil {
 		t.Fatal(err)
 	}
-	testFileContains(t, pwdfile.Name(), user.Username)
-	testListContains(t, m, user)
-	testLocalRootExists(t, root, user.Username)
+
+	// create
+	u := &User{
+		Username: "test",
+		Password: "insecurePassword",
+		FS: FS{
+			Mode:  0755,
+			Owner: usr.Username,
+			Group: usr.Username,
+			Children: []FS{
+				{
+					Name:  "read",
+					Mode:  0555,
+					Owner: usr.Username,
+					Group: usr.Username,
+				},
+			},
+		},
+	}
+	if err := m.Save(context.Background(), u); err != nil {
+		t.Fatal(err)
+	}
+	testFileContains(t, pwdfile.Name(), u.Username)
+	testListContains(t, m, u)
+	testLocalRootExists(t, root, u.Username)
 
 	// update
-	user.Password = "verysecurepassword"
-	if err := m.Save(context.Background(), user); err != nil {
+	u.Password = "securePassword"
+	if err := m.Save(context.Background(), u); err != nil {
 		t.Fatal(err)
 	}
-	testFileContains(t, pwdfile.Name(), user.Username)
-	testListContains(t, m, user)
-	testLocalRootExists(t, root, user.Username)
+	testFileContains(t, pwdfile.Name(), u.Username)
+	testListContains(t, m, u)
+	testLocalRootExists(t, root, u.Username)
 
 	// delete
-	if err := m.Delete(context.Background(), user); err != nil {
+	if err := m.Delete(context.Background(), u); err != nil {
 		t.Fatal(err)
 	}
-	testFileDoesntContain(t, pwdfile.Name(), user.Username)
-	testListDoesntContain(t, m, user)
-	testLocalRootDoesntExists(t, root, user.Username)
+	testFileDoesntContain(t, pwdfile.Name(), u.Username)
+	testListDoesntContain(t, m, u)
+	testLocalRootDoesntExists(t, root, u.Username)
 }
 
 func testFileContains(t *testing.T, f, s string) {

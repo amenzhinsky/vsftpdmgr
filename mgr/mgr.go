@@ -19,6 +19,7 @@ import (
 type User struct {
 	Username string `json:"username"`
 	Password string `json:"password,omitempty"`
+	FS       FS     `json:"fs"`
 }
 
 // Mgr is vsftpd users management entity.
@@ -40,6 +41,12 @@ func New(root, pwdfile, databaseURL string) (*Mgr, error) {
 		username VARCHAR(32) NOT NULL PRIMARY KEY,
 		password VARCHAR(34) NOT NULL
 	)`); err != nil {
+		return nil, err
+	}
+
+	// for convenience
+	root, err = filepath.Abs(root)
+	if err != nil {
 		return nil, err
 	}
 
@@ -111,7 +118,14 @@ func (m *Mgr) Save(ctx context.Context, user *User) error {
 	if err != nil {
 		return err
 	}
-	return m.sync(ctx)
+
+	if err = m.sync(ctx); err != nil {
+		return err
+	}
+
+	// TODO: it's not consistent, user can be created or updated
+	// but when file system creation fails the func returns an error.
+	return mkfs(m.root, user.FS, true)
 }
 
 // Delete deletes a virtual user.

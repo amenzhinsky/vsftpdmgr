@@ -6,7 +6,25 @@
 
 Create new or update existing user:
 ```
-$ curl localhost:8080/users/ -d '{"username": "test", "password": "test"}'
+$ curl localhost:8080/users/ -d '{"username": "test", "password": "test", "fs": {
+	"mode": 0555,
+	"owner": "ftp",
+	"group": "ftp"
+	"children": [
+		{
+			"name": "read"
+			"mode": 0555,
+			"owner": "ftp",
+			"group": "ftp"
+		},
+		{
+			"name": "write"
+			"mode": 0755,
+			"owner": "ftp",
+			"group": "ftp"
+		}
+	]
+}}'
 ```
 
 Delete user:
