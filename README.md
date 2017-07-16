@@ -54,7 +54,37 @@ $ vsftpdmgr \
 	/srv/ftp
 ```
 
+vsftpdmgr tries to chmod and chown user local directories when the corresponding option is provided while updating an user, to avoid running the binary as a superuser it's recommended to restrict root privileges by changing the UNIX file capabilities and run the program as a normal user:
+```
+$ sudo setcap CAP_CHOWN,CAP_FOWNER=+ep vsftpdmgr
+```
+
 **WARNING**: for multi-server installation the pwdfile has to be accessible by all instances, e.g. put it on a nfs. Otherwise it can lead to unexpected behaviour.
+
+## Systemd
+
+```
+[Unit]
+Description=vsftpdmgr
+After=network.target
+
+[Service]
+Environment=DATABASE_URL=postgres://user:pass@host:port/dbname
+Type=simple
+ExecStart=/usr/local/bin/vsftpdmgr \
+	-addr :8080 \
+	/srv/vsftpd \vsftpd.conf
+	/srv/vsftpd.passwd
+
+PrivateTmp=yes
+PrivateDevices=yes
+Restart=always
+RestartSec=15
+CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ## Testing
 
