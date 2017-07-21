@@ -125,7 +125,7 @@ func (m *Mgr) Save(ctx context.Context, user *User) error {
 
 	// TODO: it's not consistent, user can be created or updated
 	// but when file system creation fails the func returns an error.
-	return mkfs(m.root, user.FS, true)
+	return mkfs(filepath.Join(m.root, user.Username), user.FS, true)
 }
 
 // Delete deletes a virtual user.
