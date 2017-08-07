@@ -53,7 +53,7 @@ func TestCRUD(t *testing.T) {
 	u := &User{
 		Username: "test",
 		Password: "insecurePassword",
-		FS: FS{
+		FS: &FS{
 			Mode:  0755,
 			Owner: usr.Username,
 			Group: usr.Username,

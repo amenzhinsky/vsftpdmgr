@@ -7,3 +7,6 @@ release: build
 test:
 	@go test -i -race ./...
 	@go test -v -race -cover $(shell go list ./... | grep -v vendor)
+
+todo: # SKIPTODO
+	grep -rni . | grep -i todo: | grep -vi SKIPTODO

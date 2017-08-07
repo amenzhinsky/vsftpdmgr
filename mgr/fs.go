@@ -1,6 +1,7 @@
 package mgr
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -22,6 +23,11 @@ type FS struct {
 // hence fs.Name is replaced with the root value.
 func mkfs(root string, fs FS, first bool) error {
 	if first {
+		if fs.Name != "" {
+			return errors.New("name must be blank for root node")
+		}
+
+		// TODO: avoid modifying fs in case we use pointer here
 		fs.Name = root
 	}
 
@@ -89,6 +95,11 @@ func mkfs(root string, fs FS, first bool) error {
 
 	// recursively create children
 	for _, ch := range fs.Children {
+		if ch.Name == "" {
+			return errors.New("node name is blank")
+		}
+
+		// TODO: avoid modifying ch in case we use pointer here
 		ch.Name = filepath.Join(fs.Name, ch.Name)
 		if err = mkfs(root, ch, false); err != nil {
 			return err

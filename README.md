@@ -6,37 +6,41 @@
 
 Create new or update existing user:
 ```
-$ curl localhost:8181/users/ -d '{"username": "test", "password": "test", "fs": {
-	"mode": 365,
-	"owner": "ftp",
-	"group": "ftp"
-	"children": [
-		{
-			"name": "read"
-			"mode": 365,
-			"owner": "ftp",
-			"group": "ftp"
-		},
-		{
-			"name": "write"
-			"mode": 493,
-			"owner": "ftp",
-			"group": "ftp"
-		}
-	]
-}}'
+$ curl localhost:8181/users/ -d '{
+  "username": "test",
+  "password": "test",
+  "fs": {
+    "mode": 365,
+    "owner": "ftp",
+    "group": "ftp",
+    "children": [
+      {
+        "name": "read",
+        "mode": 365,
+        "owner": "ftp",
+        "group": "ftp"
+      },
+      {
+        "name": "write",
+        "mode": 493,
+        "owner": "ftp",
+        "group": "ftp"
+      }
+    ]
+  }
+}'
 ```
 
 JSON doesn't support octals, so 0555 is 365 and 0755 is 493.
 
 Delete user:
 ```
-$ curl -X DELETE localhost:8080/users/ -d '{"username": "test"}'
+$ curl -X DELETE localhost:8181/users/ -d '{"username": "test"}'
 ```
 
 List all users:
 ```
-$ curl localhost:8080/users/
+$ curl localhost:8181/users/
 ```
 
 ## Running
@@ -48,12 +52,12 @@ The service requires a database storage, but currently only postgresql is suppor
 ```
 $ export DATABASE_URL=postgres://user:pass@localhost:5432/vsftpd
 $ vsftpdmgr \
-	-addr :8080 \
-	-ca-file  /etc/ssl/certs/ca.crt \
-	-cert-file /etc/ssl/certs/vsftpdmgr.crt \
-	-key-file /etc/ssl/private/vsftpdmgr.key \
-	/etc/vsftpd.passwd \
-	/srv/ftp
+  -addr :8181 \
+  -ca-file  /etc/ssl/certs/ca.crt \
+  -cert-file /etc/ssl/certs/vsftpdmgr.crt \
+  -key-file /etc/ssl/private/vsftpdmgr.key \
+  /etc/vsftpd.passwd \
+  /srv/ftp
 ```
 
 vsftpdmgr tries to chmod and chown user local directories when the corresponding option is provided while updating an user, to avoid running the binary as a superuser it's recommended to restrict root privileges by changing the UNIX file capabilities and run the program as a normal user:
@@ -71,22 +75,20 @@ Description=vsftpdmgr
 After=network.target
 
 [Service]
-Environment=DATABASE_URL=postgres://user:pass@host:port/dbname
 Type=simple
-ExecStart=/usr/local/bin/vsftpdmgr \
-	-addr :8080 \
-	/srv/vsftpd \vsftpd.conf
-	/srv/vsftpd.passwd
-
-PrivateTmp=yes
-PrivateDevices=yes
-Restart=always
-RestartSec=15
-CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER
+Environment=DATABASE_URL=postgres://user:pass@host:port/dbname
+ExecStart=/usr/local/bin/vsftpdmgr -addr :8181 /srv/vsftpd/vsftpd.conf /srv/vsftpd.passwd
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+As well you may consider running the service under unprivileged user, but keep in mind that it won't be able to chown and chmod in some cases.
+
+There're two options to protect your system:
+
+1. Using systemd's options `ProtectSystem=`, `ProtectHome=`, etc.
+1. Grant the service capabilities (TODO: figure out them).
 
 ## Testing
 

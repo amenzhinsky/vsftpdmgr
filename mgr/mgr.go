@@ -19,7 +19,9 @@ import (
 type User struct {
 	Username string `json:"username"`
 	Password string `json:"password,omitempty"`
-	FS       FS     `json:"fs"`
+
+	// we use pointer here to hide the attribute when marshalling the structure.
+	FS *FS `json:"fs,omitempty"`
 }
 
 // Mgr is vsftpd users management entity.
@@ -123,9 +125,18 @@ func (m *Mgr) Save(ctx context.Context, user *User) error {
 		return err
 	}
 
-	// TODO: it's not consistent, user can be created or updated
-	// but when file system creation fails the func returns an error.
-	return mkfs(filepath.Join(m.root, user.Username), user.FS, true)
+	root := filepath.Join(m.root, user.Username)
+
+	fs := FS{}
+	if user.FS != nil {
+		// we copy the FS structure here because
+		// it's modified when pass it to mkfs.
+		fs = *user.FS
+	}
+
+	// TODO: it's not consistent, user can be created or updated successfully
+	// but when the fs creation fails the func returns an error.
+	return mkfs(root, fs, true)
 }
 
 // Delete deletes a virtual user.
