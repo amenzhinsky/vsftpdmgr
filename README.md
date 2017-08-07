@@ -6,26 +6,28 @@
 
 Create new or update existing user:
 ```
-$ curl localhost:8080/users/ -d '{"username": "test", "password": "test", "fs": {
-	"mode": 0555,
+$ curl localhost:8181/users/ -d '{"username": "test", "password": "test", "fs": {
+	"mode": 365,
 	"owner": "ftp",
 	"group": "ftp"
 	"children": [
 		{
 			"name": "read"
-			"mode": 0555,
+			"mode": 365,
 			"owner": "ftp",
 			"group": "ftp"
 		},
 		{
 			"name": "write"
-			"mode": 0755,
+			"mode": 493,
 			"owner": "ftp",
 			"group": "ftp"
 		}
 	]
 }}'
 ```
+
+JSON doesn't support octals, so 0555 is 365 and 0755 is 493.
 
 Delete user:
 ```
