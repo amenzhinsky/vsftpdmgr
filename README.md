@@ -88,7 +88,7 @@ As well you may consider running the service under unprivileged user, but keep i
 There're two options to protect your system:
 
 1. Using systemd's options `ProtectSystem=`, `ProtectHome=`, etc.
-1. Grant the service capabilities (TODO: figure out them).
+1. Grant the service the linux kernel capabilities (TODO: figure out them, most likely `CAP_CHOWN` and `CAP_FOWNER` should suffice).
 
 ## Testing
 
