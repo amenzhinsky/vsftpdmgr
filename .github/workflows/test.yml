@@ -25,10 +25,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
-      - name: Run go tests
+      - name: Setup go
         uses: actions/setup-go@v2
         with:
           go-version: ^1.15.1
+      - name: Run go test
         run: go test ./...
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@postgres/vsftpdmgrdb?sslmode=disable
