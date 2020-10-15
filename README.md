@@ -1,4 +1,4 @@
-# vsftpdmgr [![CircleCI](https://circleci.com/gh/amenzhinsky/vsftpdmgr.svg?style=svg)](https://circleci.com/gh/amenzhinsky/vsftpdmgr)
+# vsftpdmgr
 
 [vsftpd](https://en.wikipedia.org/wiki/Vsftpd) users management daemon.
 
