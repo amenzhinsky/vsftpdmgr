@@ -9,7 +9,7 @@ jobs:
   test:
     name: go test
     runs-on: ubuntu-latest
-    container: golang:v1.15-alpine
+    container: golang:1.15
     services:
       postgres:
         image: postgres
