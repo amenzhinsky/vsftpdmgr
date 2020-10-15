@@ -15,4 +15,4 @@ dependencies:
 
 test:
   override:
-    - cd $BUILD_PATH && make test
+    - cd $BUILD_PATH && go test -race ./...

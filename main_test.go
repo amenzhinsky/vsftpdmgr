@@ -42,10 +42,10 @@ func TestAll(t *testing.T) {
 		m.Close()
 	}()
 
-	ts := httptest.NewServer(handler(m, false, false))
+	ts := httptest.NewServer(handler(m))
 	defer ts.Close()
 
-	rs := request(t, http.MethodPost, ts.URL+"/users/", strings.NewReader(`{
+	rs := request(t, http.MethodPost, ts.URL+"/users", strings.NewReader(`{
 		"username": "test",
 		"password": "test"
 	}`))
@@ -54,7 +54,7 @@ func TestAll(t *testing.T) {
 		t.Fatalf("POST /users/ code = %d, want %d", rs.StatusCode, http.StatusOK)
 	}
 
-	rs = request(t, http.MethodGet, ts.URL+"/users/", nil)
+	rs = request(t, http.MethodGet, ts.URL+"/users", nil)
 	testResponseContains(t, rs, "test")
 }
 

@@ -5,8 +5,9 @@
 ## API
 
 Create new or update existing user:
-```
-$ curl localhost:8181/users/ -d '{
+
+```bash
+curl localhost:8080/users -d '{
   "username": "test",
   "password": "test",
   "fs": {
@@ -34,20 +35,22 @@ $ curl localhost:8181/users/ -d '{
 JSON doesn't support octals, so 0555 is 365 and 0755 is 493.
 
 Delete user:
-```
-$ curl -X DELETE localhost:8181/users/ -d '{"username": "test"}'
+
+```bash
+curl -X DELETE localhost:8080/users -d '{"username": "test"}'
 ```
 
 List all users:
-```
-$ curl localhost:8181/users/
+
+```bash
+curl localhost:8080/users
 ```
 
 ## Running
 
 The service requires a database storage, but currently only postgresql is supported.
 
-`DATABASE_URL` is passed to the binary via environment variable instead of a flag for security reasons.
+`DATABASE_URL` is passed to the binary as an environment variable instead of a flag for security reasons.
 
 ```
 $ export DATABASE_URL=postgres://user:pass@localhost:5432/vsftpd
@@ -85,7 +88,7 @@ WantedBy=multi-user.target
 
 As well you may consider running the service under unprivileged user, but keep in mind that it won't be able to chown and chmod in some cases.
 
-There're two options to protect your system:
+There are two options to protect your system:
 
 1. Using systemd's options `ProtectSystem=`, `ProtectHome=`, etc.
 1. Grant the service the linux kernel capabilities (TODO: figure out them, most likely `CAP_CHOWN` and `CAP_FOWNER` should suffice).
@@ -96,5 +99,5 @@ Don't forget to add `?sslmode=disable` if ssl is disabled for localhost connecti
 
 ```
 $ export TEST_DATABASE_URL=postgres://user:pass@localhost:5432/vsftpd_test
-$ make test
+$ go test ./...
 ```
