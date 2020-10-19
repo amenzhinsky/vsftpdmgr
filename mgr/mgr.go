@@ -250,7 +250,7 @@ func (m *Mgr) sync(ctx context.Context) (err error) {
 	}
 
 	if err = os.Rename(t.Name(), m.pwdfile); err != nil {
-		os.Rename(oldPath, m.pwdfile) // try to revert changes
+		_ = os.Rename(oldPath, m.pwdfile) // try to revert changes
 	}
 	return os.Remove(oldPath)
 }

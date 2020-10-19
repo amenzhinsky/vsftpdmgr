@@ -3,8 +3,6 @@ package crypt
 import "testing"
 
 func TestCrypt(t *testing.T) {
-	t.Parallel()
-
 	got, err := Crypt("test", "$1$Bb6jzHiC$")
 	if err != nil {
 		t.Fatal(err)
@@ -17,8 +15,6 @@ func TestCrypt(t *testing.T) {
 }
 
 func TestMD5(t *testing.T) {
-	t.Parallel()
-
 	p, err := MD5("test")
 	if err != nil {
 		t.Fatal(err)

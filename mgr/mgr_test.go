@@ -27,8 +27,12 @@ func TestCRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		pwdfile.Close()
-		os.Remove(pwdfile.Name())
+		if err := pwdfile.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(pwdfile.Name()); err != nil {
+			t.Fatal(err)
+		}
 	}()
 
 	m, err := New(root, pwdfile.Name(), databaseURL)
@@ -36,10 +40,7 @@ func TestCRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		m.Clean()
-
-		cerr := m.Close()
-		if err == nil && cerr != nil {
+		if err := m.Close(); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -56,13 +57,11 @@ func TestCRUD(t *testing.T) {
 		FS: &FS{
 			Mode:  0755,
 			Owner: usr.Username,
-			Group: usr.Username,
 			Children: []FS{
 				{
 					Name:  "read",
 					Mode:  0555,
 					Owner: usr.Username,
-					Group: usr.Username,
 				},
 			},
 		},
@@ -90,6 +89,10 @@ func TestCRUD(t *testing.T) {
 	testFileDoesntContain(t, pwdfile.Name(), u.Username)
 	testListDoesntContain(t, m, u)
 	testLocalRootDoesntExists(t, root, u.Username)
+
+	if err := m.Clean(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func testFileContains(t *testing.T, f, s string) {

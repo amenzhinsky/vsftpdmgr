@@ -29,8 +29,12 @@ func TestAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		pwdfile.Close()
-		os.Remove(pwdfile.Name())
+		if err := pwdfile.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(pwdfile.Name()); err != nil {
+			t.Fatal(err)
+		}
 	}()
 
 	m, err := mgr.New(root, pwdfile.Name(), databaseURL)
@@ -38,8 +42,12 @@ func TestAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		m.Clean()
-		m.Close()
+		if err := m.Clean(); err != nil {
+			t.Fatal(err)
+		}
+		if err := m.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}()
 
 	ts := httptest.NewServer(handler(m))

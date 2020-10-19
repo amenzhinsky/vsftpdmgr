@@ -8,8 +8,6 @@ import (
 )
 
 func TestMkfs(t *testing.T) {
-	t.Parallel()
-
 	root, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // FS is file system tree.
@@ -53,42 +54,35 @@ func mkfs(root string, fs FS, first bool) error {
 		}
 	}
 
-	c, err := user.Current()
-	if err != nil {
-		return err
-	}
-	uid, gid := c.Uid, c.Gid
-
-	if fs.Owner != "" {
-		u, err := user.Lookup(fs.Owner)
+	if fs.Owner != "" || fs.Group != "" {
+		stat, err := os.Stat(fs.Name)
 		if err != nil {
 			return err
 		}
-		uid = u.Uid
-	}
-
-	if fs.Group != "" {
-		g, err := user.LookupGroup(fs.Group)
-		if err != nil {
-			return err
+		sys := stat.Sys().(*syscall.Stat_t)
+		uid := int(sys.Uid)
+		gid := int(sys.Gid)
+		if fs.Owner != "" {
+			u, err := user.Lookup(fs.Owner)
+			if err != nil {
+				return err
+			}
+			uid, err = strconv.Atoi(u.Uid)
+			if err != nil {
+				return err
+			}
 		}
-		gid = g.Gid
-	}
-
-	iuid, err := strconv.Atoi(uid)
-	if err != nil {
-		return err
-	}
-
-	igid, err := strconv.Atoi(gid)
-	if err != nil {
-		return err
-	}
-
-	// TODO: posix uid and gid are ints, won't work on windows
-	// chown only when uid or gid are different from the current user.
-	if uid != c.Uid || gid != c.Gid {
-		if err = os.Lchown(fs.Name, iuid, igid); err != nil {
+		if fs.Group != "" {
+			g, err := user.LookupGroup(fs.Group)
+			if err != nil {
+				return err
+			}
+			gid, err = strconv.Atoi(g.Gid)
+			if err != nil {
+				return err
+			}
+		}
+		if err = os.Lchown(fs.Name, uid, gid); err != nil {
 			return err
 		}
 	}
@@ -101,7 +95,7 @@ func mkfs(root string, fs FS, first bool) error {
 
 		// TODO: avoid modifying ch in case we use pointer here
 		ch.Name = filepath.Join(fs.Name, ch.Name)
-		if err = mkfs(root, ch, false); err != nil {
+		if err := mkfs(root, ch, false); err != nil {
 			return err
 		}
 	}
